@@ -277,6 +277,37 @@ const getCartDetail = function (email) {
 	});
 };
 
+const updateProduct = function (orderID, magiaodich,checkOutID, isSuccess, checkOutDate) {
+	if(isSuccess){
+		return new Promise(function (resolve, reject) {
+			var query = "UPDATE bill SET check_out_id='" + checkOutID + "', check_out_date='" + checkOutDate + "', magiaodich ='"+magiaodich+"', status = '1'  WHERE id='" + orderID + "'";
+			pool.query(query, function (err, rows) {
+				if (err) console.log(err);
+				resolve('THANH_CONG');
+			});
+		});
+	}
+	else{
+		return new Promise(function (resolve, reject) {
+			var query = "UPDATE bill SET check_out_id='" + checkOutID + "', check_out_date='" + checkOutDate + "', status = '2'  WHERE id='" + orderID + "'";
+			pool.query(query, function (err, rows) {
+				if (err) console.log(err);
+				resolve('THANH_CONG');
+			});
+		});
+	}
+}
+const updateURL = function (idProduct, url){
+	return new Promise(function (resolve, reject) {
+		var query = "UPDATE bill SET url_payment ='"+url.toString()+"' WHERE id='" + idProduct + "'";
+		pool.query(query, function (err, rows) {
+			if (err) console.log(err);
+			resolve('THANH_CONG');
+		});
+	});
+};
+
+
 module.exports = {
 	findCusIdByEmail: findCusIdByEmail,
 	getType: getType,
@@ -292,5 +323,7 @@ module.exports = {
 	orderHistory: orderHistory,
 	changeInfo: changeInfo,
 	setCart: setCart,
-	getCartDetail: getCartDetail
+	getCartDetail: getCartDetail,
+	updateProduct: updateProduct,
+	updateURL: updateURL
 };

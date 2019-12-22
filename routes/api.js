@@ -13,6 +13,28 @@ router.get('/types', async function (req, res) {
 	res.status(200).send(type);
 });
 
+router.get('/backSucccess', async function (req, res) {
+	const checkOut = req.query;
+	const checkOutId = checkOut.id;
+	const orderID = checkOut.mrc_order_id.toString().split('.')[1];
+	const magiaodich = checkOut.txn_id;
+	const status = checkOut.stat;
+	const checkOutDate = checkOut.update_at;
+	if(status === 'c'){
+		var result = await (query.updateProduct(orderID,magiaodich,checkOutId,true,checkOutDate));
+	}
+	else{
+		query.updateProduct(orderID,magiaodich,checkOutId,false,checkOutDate);
+	}
+	res.send('');
+});
+router.get('/typesImage/:idType', async function (req, res) {//Lay hinh anh cua category
+	var url = JSON.stringify(await query.getTypeImage(req.params.idType));
+	url = JSON.parse(url)[0]['image'];
+	const result = "E:\\xampp\\htdocs\\M-Dev-Store\\admin_area\\other_images\\" + url.toString();
+	res.sendFile(result);
+});
+
 
 router.get('/topProduct', async function (req, res) {
 	var topProduct = JSON.stringify(await query.getTopProduct());
@@ -96,6 +118,8 @@ router.post('/register', async function (req, res) {
 	}
 });
 
+
+
 const TokenCheckMiddleware = async (req, res, next) => {
 	// Lấy thông tin mã token được đính kèm trong request
 	const token = req.body.token || req.query.token || req.headers['x-access-token'];
@@ -162,8 +186,8 @@ router.post('/cartOnline', async function (req, res) {
 			"mrc_order_id": "ORD." + orderinfo['orderID'],
 			"total_amount": orderinfo['TongTien'],
 			"description": 'Thanh Toan Don Hang:' + orderinfo['orderID'],
-			"url_success": "https://github.com/vinhsieu/M-Dev-Store?fbclid=IwAR3ST7m7fp98CcvDx3LwbXVUbnvDfVzVpldKa1WolRKXtZxpZpIcUt3XGkM",
-			"url_detail": "https://github.com/vinhsieu/BanQABR"
+			"url_success": "http://192.168.0.135:3000/api/backSucccess",
+			"url_detail": "http://192.168.0.135:3000/api/backSucccess"
 		}
 	};
 	const token = jwt.sign(data, API_SECRET, { algorithm: ENCODE_ALG });
@@ -179,34 +203,30 @@ router.post('/cartOnline', async function (req, res) {
 	};
 	var req = https.request(options, function (response) {
 		var chunks = [];
-
 		response.on("data", function (chunk) {
 			chunks.push(chunk);
 		});
-
 		response.on("end", function (chunk) {
 			var body = Buffer.concat(chunks);
-			console.log(body.data);
-		});
+			console.log(body.toString());
 
+			res.send(JSON.parse(body)['data']['payment_url'].toString());
+		});
 		response.on("error", function (error) {
 			console.error(error);
 		});
 	});
-
 	var postData = querystring.stringify({
 		"mrc_order_id": "ORD." + orderinfo['orderID'],
 		"total_amount": orderinfo['TongTien'],
 		"description": 'Thanh Toan Don Hang:' + orderinfo['orderID'],
-		"url_success": "https://github.com/vinhsieu/M-Dev-Store?fbclid=IwAR3ST7m7fp98CcvDx3LwbXVUbnvDfVzVpldKa1WolRKXtZxpZpIcUt3XGkM",
-		"url_detail": "https://github.com/vinhsieu/BanQABR"
+		"url_success": "http://192.168.0.135:3000/api/backSucccess/",
+		"url_detail": "http://192.168.0.135:3000/api/backSucccess/"
 	});
-
 	req.write(postData);
-
 	req.end();
-	// res.json(token);
 });
+
 
 router.post('/orderHistory', async (req, res) => {
 	var result = JSON.stringify(await query.orderHistory(req.decoded.email));
