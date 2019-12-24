@@ -8,6 +8,18 @@ const tokenList = {};
 const utils = require('../config/Utils');
 var https = require('https');
 
+var ghn = [];
+
+function makeid(length) {
+	var result = '';
+	var characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+	var charactersLength = characters.length;
+	for (var i = 0; i < length; i++) {
+		result += characters.charAt(Math.floor(Math.random() * charactersLength));
+	}
+	return result;
+}
+
 router.get('/types', async function (req, res) {
 	var type = JSON.stringify(await query.getType());
 	res.status(200).send(type);
@@ -20,14 +32,258 @@ router.get('/backSucccess', async function (req, res) {
 	const magiaodich = checkOut.txn_id;
 	const status = checkOut.stat;
 	const checkOutDate = checkOut.update_at;
-	if(status === 'c'){
-		var result = await (query.updateProduct(orderID,magiaodich,checkOutId,true,checkOutDate));
+	if (status === 'c') {
+		var result = await (query.updateProduct(orderID, magiaodich, checkOutId, true, checkOutDate));
+		res.send("<script>window.open('http://localhost/M-Dev-Store/customer/my_account.php?my_orders', '_self');</script>");
 	}
-	else{
-		query.updateProduct(orderID,magiaodich,checkOutId,false,checkOutDate);
+	else {
+		query.updateProduct(orderID, magiaodich, checkOutId, false, checkOutDate);
+		res.send('<p>Đã Hủy Thành Công, Bạn Có Thể Thanh Toán Lại</p>');
 	}
-	res.send('');
 });
+
+router.get('/ghn', async function (req, res) {
+	//Request len Bao Kim
+	var options = {
+		'method': 'POST',
+		'hostname': 'dev-online-gateway.ghn.vn',
+		'path': '/apiv3-api/api/v1/apiv3/CalculateFee?',
+		'headers': {
+			'Accept': 'application/json',
+			'Content-Type': 'application/json'
+		},
+		'maxRedirects': 20
+	};
+	var req = https.request(options, function (response) {
+		var chunks = [];
+		response.on("data", function (chunk) {
+			chunks.push(chunk);
+		});
+		response.on("end", async function (chunk) {
+			var body = Buffer.concat(chunks);
+			console.log(body.toString());
+		});
+		response.on("error", function (error) {
+			console.error(error);
+		});
+	});
+
+	var postData = JSON.stringify({
+		"token": "TokenStaging",
+		"Weight": 10000,
+		"Length": 10,
+		"Width": 110,
+		"Height": 20,
+		"FromDistrictID": 1443,
+		"ToDistrictID": 1452,
+		"ServiceID": 53319,
+		"OrderCosts": [
+			{
+				"ServiceID": 100022
+			},
+			{
+				"ServiceID": 53337
+			}
+		],
+		"InsuranceFee": 1000003
+	});
+	req.write(postData);
+	req.end();
+});
+
+router.get('/city', async function (req, res) {
+	if (ghn.length === 0) {
+		var options = {
+			'method': 'POST',
+			'hostname': 'dev-online-gateway.ghn.vn',
+			'path': '/apiv3-api/api/v1/apiv3/GetDistricts?',
+			'headers': {
+				'Content-Type': 'application/json'
+			},
+			'maxRedirects': 20
+		};
+
+		var req1 = https.request(options, function (res1) {
+			var chunks = [];
+
+			res1.on("data", function (chunk) {
+				chunks.push(chunk);
+			});
+
+			res1.on("end", function (chunk) {
+				var body = Buffer.concat(chunks);
+				var json = JSON.parse(body)['data'];
+				ghn = json;
+				json = json.filter(e => e.Code === '');
+				var json = json.map(e => {
+					return { ProvinceID: e.ProvinceID, ProvinceName: e.ProvinceName };
+				});
+
+				res.send(json);
+			});
+
+			res1.on("error", function (error) {
+				console.error(error);
+			});
+		});
+
+		var postData = JSON.stringify({ "token": "TokenStaging" });
+
+		req1.write(postData);
+
+		req1.end();
+	}
+	else {
+		var json = ghn;
+		json = json.filter(e => e.Code === '');
+		var json = json.map(e => {
+			return { ProvinceID: e.ProvinceID, ProvinceName: e.ProvinceName };
+		});
+		res.send(json);
+	}
+})
+
+router.get('/district/:cityid', async function (req, res) {
+	const cityid = req.params.cityid;
+	if (ghn.length === 0) {
+		var options = {
+			'method': 'POST',
+			'hostname': 'dev-online-gateway.ghn.vn',
+			'path': '/apiv3-api/api/v1/apiv3/GetDistricts?',
+			'headers': {
+				'Content-Type': 'application/json'
+			},
+			'maxRedirects': 20
+		};
+
+		var req1 = https.request(options, function (res1) {
+			var chunks = [];
+
+			res1.on("data", function (chunk) {
+				chunks.push(chunk);
+			});
+
+			res1.on("end", function (chunk) {
+				var body = Buffer.concat(chunks);
+				var json = JSON.parse(body)['data'];
+				ghn = json;
+				json = json.filter(e => e.ProvinceID == cityid);
+				var json = json.map(e => {
+					return { DistrictID: e.DistrictID, DistrictName: e.DistrictName };
+				});
+
+				res.send(json);
+			});
+
+			res1.on("error", function (error) {
+				console.error(error);
+			});
+		});
+
+		var postData = JSON.stringify({ "token": "TokenStaging" });
+
+		req1.write(postData);
+
+		req1.end();
+	}
+	else {
+		var json = ghn;
+		json = json.filter(e => e.ProvinceID == cityid);
+		var json = json.map(e => {
+			return { DistrictID: e.DistrictID, DistrictName: e.DistrictName };
+		});
+		res.send(json);
+	}
+})
+
+router.get('/ward/:districtID', async function (req, res) {
+	const districtID = req.params.districtID;
+	var options = {
+		'method': 'POST',
+		'hostname': 'dev-online-gateway.ghn.vn',
+		'path': '/apiv3-api/api/v1/apiv3/GetWards?',
+		'headers': {
+			'Content-Type': 'application/json'
+		},
+		'maxRedirects': 20
+	};
+
+	var req1 = https.request(options, function (res1) {
+		var chunks = [];
+
+		res1.on("data", function (chunk) {
+			chunks.push(chunk);
+		});
+
+		res1.on("end", function (chunk) {
+			var body = Buffer.concat(chunks);
+			var json = JSON.parse(body)['data']['Wards'];
+			json = json.map(e => {
+				return { WardCode: e.WardCode, WardName: e.WardName };
+			});
+
+			res.send(json);
+		});
+
+		res1.on("error", function (error) {
+			console.error(error);
+		});
+	});
+
+	var postData = JSON.stringify({
+		"token": "TokenStaging",
+		"DistrictID": parseInt(districtID)
+	});
+
+	req1.write(postData);
+
+	req1.end();
+})
+
+router.get('/shipFee/:districtID/:weight', async function (req, res) {
+	const districtID = req.params.districtID;
+	const weight = req.params.weight;
+	var options = {
+		'method': 'POST',
+		'hostname': 'dev-online-gateway.ghn.vn',
+		'path': '/apiv3-api/api/v1/apiv3/CalculateFee?',
+		'headers': {
+			'Content-Type': 'application/json'
+		},
+		'maxRedirects': 20
+	};
+
+	var req1 = https.request(options, function (res1) {
+		var chunks = [];
+
+		res1.on("data", function (chunk) {
+			chunks.push(chunk);
+		});
+
+		res1.on("end", function (chunk) {
+			var body = Buffer.concat(chunks);
+			var json = JSON.parse(body)['data'];
+
+			res.send(json);
+		});
+
+		res1.on("error", function (error) {
+			console.error(error);
+		});
+	});
+
+	var postData = JSON.stringify({
+		"token":"TokenStaging",
+		"Weight":parseInt(weight),
+		"FromDistrictID":1463,
+		"ToDistrictID": parseInt(districtID),
+		"ServiceID":53320});
+
+	req1.write(postData);
+
+	req1.end();
+})
+
 router.get('/typesImage/:idType', async function (req, res) {//Lay hinh anh cua category
 	var url = JSON.stringify(await query.getTypeImage(req.params.idType));
 	url = JSON.parse(url)[0]['image'];
@@ -65,6 +321,7 @@ router.get('/search/:key', async function (req, res) {
 	var result = JSON.stringify(await query.search(req.params.key));
 	res.send(result);
 });
+
 router.get('/search/:key', async function (req, res) {
 	var result = JSON.stringify(await query.search(req.params.key));
 	res.send(result);
@@ -74,8 +331,6 @@ router.get('/size/:productID', async function (req, res) {
 	var result = JSON.stringify(await query.getSizeByProductId(req.params.productID));
 	res.send(result);
 });
-
-
 
 router.post('/login', async function (req, res) {
 	const postData = req.body;
@@ -118,8 +373,6 @@ router.post('/register', async function (req, res) {
 	}
 });
 
-
-
 const TokenCheckMiddleware = async (req, res, next) => {
 	// Lấy thông tin mã token được đính kèm trong request
 	const token = req.body.token || req.query.token || req.headers['x-access-token'];
@@ -152,6 +405,7 @@ router.post('/cart', async (req, res) => {
 	const cusId = await query.findCusIdByEmail(req.decoded.email);
 	const result = await query.Cart(cusId, req.body.arrayDetail);
 	if (result) {
+		const temp = await query.deleteCartDetail(cusId);
 		res.send('THANH CONG');
 	}
 	else {
@@ -164,6 +418,7 @@ router.post('/cartOnline', async function (req, res) {
 	const cusId = await query.findCusIdByEmail(req.decoded.email);
 	const orderinfo = await query.Cart(cusId, req.body.arrayDetail);
 
+
 	//Tao Bao Kim Token
 	const API_KEY = 'a18ff78e7a9e44f38de372e093d87ca1';
 	const API_SECRET = '9623ac03057e433f95d86cf4f3bef5cc';
@@ -175,7 +430,7 @@ router.post('/cartOnline', async function (req, res) {
 	const issuedAt = d.getTime();
 	const notBefore = issuedAt;
 	const expire = notBefore + TOKEN_EXPIRE;
-
+	const ramdonPre = makeid(5);
 	const data = {
 		'iat': issuedAt,         // Issued at: time when the token was generated
 		'jti': tokenId,          // Json Token Id: an unique identifier for the token
@@ -183,11 +438,11 @@ router.post('/cartOnline', async function (req, res) {
 		'nbf': notBefore,        // Not before
 		'exp': expire,           // Expire
 		'form_params': {                  // request body (dữ liệu post)
-			"mrc_order_id": "ORD." + orderinfo['orderID'],
+			"mrc_order_id": ramdonPre + '.' + orderinfo['orderID'],
 			"total_amount": orderinfo['TongTien'],
 			"description": 'Thanh Toan Don Hang:' + orderinfo['orderID'],
-			"url_success": "http://192.168.0.135:3000/api/backSucccess",
-			"url_detail": "http://192.168.0.135:3000/api/backSucccess"
+			"url_success": "http://localhost:3000/api/backSucccess",
+			"url_detail": "http://localhost:3000/api/backSucccess"
 		}
 	};
 	const token = jwt.sign(data, API_SECRET, { algorithm: ENCODE_ALG });
@@ -206,22 +461,26 @@ router.post('/cartOnline', async function (req, res) {
 		response.on("data", function (chunk) {
 			chunks.push(chunk);
 		});
-		response.on("end", function (chunk) {
+		response.on("end", async function (chunk) {
 			var body = Buffer.concat(chunks);
-			console.log(body.toString());
-
+			const url = JSON.parse(body)['data']['payment_url'].toString();
+			const updateURl = await query.updateURL(orderinfo['orderID'], url);
+			const temp = await query.deleteCartDetail(cusId);
 			res.send(JSON.parse(body)['data']['payment_url'].toString());
 		});
 		response.on("error", function (error) {
 			console.error(error);
 		});
 	});
+
+
+
 	var postData = querystring.stringify({
-		"mrc_order_id": "ORD." + orderinfo['orderID'],
+		"mrc_order_id": ramdonPre + '.' + orderinfo['orderID'],
 		"total_amount": orderinfo['TongTien'],
 		"description": 'Thanh Toan Don Hang:' + orderinfo['orderID'],
-		"url_success": "http://192.168.0.135:3000/api/backSucccess/",
-		"url_detail": "http://192.168.0.135:3000/api/backSucccess/"
+		"url_success": "http://localhost:3000/api/backSucccess",
+		"url_detail": "http://localhost:3000/api/backSucccess"
 	});
 	req.write(postData);
 	req.end();

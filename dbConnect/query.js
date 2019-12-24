@@ -297,6 +297,7 @@ const updateProduct = function (orderID, magiaodich,checkOutID, isSuccess, check
 		});
 	}
 }
+
 const updateURL = function (idProduct, url){
 	return new Promise(function (resolve, reject) {
 		var query = "UPDATE bill SET url_payment ='"+url.toString()+"' WHERE id='" + idProduct + "'";
@@ -307,6 +308,15 @@ const updateURL = function (idProduct, url){
 	});
 };
 
+const deleteCartDetail = function (idCustomer){
+	return new Promise(function (resolve, reject) {
+		var query = "DELETE FROM cart_detail WHERE id_customer= '"+idCustomer+"'";
+		pool.query(query, function (err, rows) {
+			if (err) console.log(err);
+			resolve('THANH_CONG');
+		});
+	});
+}
 
 module.exports = {
 	findCusIdByEmail: findCusIdByEmail,
@@ -325,5 +335,6 @@ module.exports = {
 	setCart: setCart,
 	getCartDetail: getCartDetail,
 	updateProduct: updateProduct,
-	updateURL: updateURL
+	updateURL: updateURL,
+	deleteCartDetail: deleteCartDetail
 };
