@@ -310,6 +310,17 @@ router.get('/topProduct', async function (req, res) {
 	res.status(200).send(topProduct);
 });
 
+router.get('/slider', async function (req, res) {
+	var topProduct = JSON.stringify(await query.getSlider());
+	res.status(200).send(topProduct);
+});
+
+router.get('/slider/:idSlider', async function (req, res) {//Lay hinh anh cua category
+	var url = JSON.stringify(await query.getSlider(req.params.idSlider));
+	url = JSON.parse(url)[0]['slider_image'];
+	const result = "E:\\xampp\\htdocs\\M-Dev-Store\\admin_area\\slides_images\\" + url.toString();
+	res.sendFile(result);
+});
 
 router.get('/typesImage/:idType', async function (req, res) {//Lay hinh anh cua category
 	var url = JSON.stringify(await query.getTypeImage(req.params.idType));
@@ -458,6 +469,16 @@ router.post('/getGHN', async function (req, res) {
 	req1.write(postData);
 
 	req1.end();
+});
+
+router.get('/order_detail/:idOrder', async function (req, res) {
+	var result = await query.getOrderDetail(req.params.idOrder);
+	res.json(result);
+});
+
+router.get('/updateOrder/:idOrder', async function (req, res) {
+	var result = await query.updateOrder(req.params.idOrder);
+	res.json(result);
 });
 
 const TokenCheckMiddleware = async (req, res, next) => {
@@ -609,6 +630,8 @@ router.post('/cart_detail', async function (req, res) {
 	var result = await query.getCartDetail(account.email);
 	res.json(result);
 });
+
+
 
 
 module.exports = router;

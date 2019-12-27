@@ -327,6 +327,7 @@ const getUserInfoByBillId = function (billId){
 		});
 	});
 }
+
 const updateBill = function(billID,orderID, orderCode, expectedDeliveryTime, totalServiceFee){
 	return new Promise(function (resolve, reject) {
 		var query = "UPDATE bill SET orderID = '"+orderID+"', orderCode='"+orderCode+"', expectedDeliveryTime='"+expectedDeliveryTime+"', totalServiceFee='"+totalServiceFee+"', status='3' WHERE id ='"+billID+"'";
@@ -337,6 +338,46 @@ const updateBill = function(billID,orderID, orderCode, expectedDeliveryTime, tot
 	});
 }
 
+const getSlider = function(idSilder=0){
+	if(idSilder == 0){
+		return new Promise(function (resolve, reject) {
+			var query = "SELECT * FROM slider sld";
+			pool.query(query, function (err, rows) {
+				if (err) console.log(err);
+				resolve(rows);
+			});
+		});
+	}
+	else{
+		return new Promise(function (resolve, reject) {
+			var query = "SELECT * FROM slider sld WHERE id ="+idSilder+"";
+			pool.query(query, function (err, rows) {
+				if (err) console.log(err);
+				resolve(rows);
+			});
+		});
+	}
+}
+
+const getOrderDetail = function(idBill){
+	return new Promise(function (resolve, reject) {
+		var query = "SELECT b.status,b.date_order,b.id, p.name as productName, b.orderCode, bdt.quantity, bdt.price, b.expectedDeliveryTime,b.totalServiceFee, GROUP_CONCAT(img.id) as imagesID,s.name as sizeName,b.url_payment  FROM bill b JOIN bill_detail bdt ON b.id = bdt.id_bill JOIN product p ON p.id = bdt.id_product JOIN size_detail sdt ON bdt.id_size_detail = sdt.id JOIN SIZE s ON sdt.id_size = s.id JOIN images img ON img.id_product = p.id WHERE b.id = "+idBill+" GROUP BY p.id";
+		pool.query(query, function (err, rows) {
+			if (err) console.log(err);
+			resolve(rows);
+		});
+	});
+}
+
+const updateOrder = function(idBill){
+	return new Promise(function (resolve, reject) {
+		var query = "UPDATE bill SET status = 4 WHERE id = "+idBill+"";
+		pool.query(query, function (err, rows) {
+			if (err) console.log(err);
+			resolve("THANH_CONG");
+		});
+	});
+}
 module.exports = {
 	findCusIdByEmail: findCusIdByEmail,
 	getType: getType,
@@ -357,5 +398,8 @@ module.exports = {
 	updateURL: updateURL,
 	deleteCartDetail: deleteCartDetail,
 	getUserInfoByBillId: getUserInfoByBillId,
-	updateBill: updateBill
+	updateBill: updateBill,
+	getSlider: getSlider,
+	getOrderDetail: getOrderDetail,
+	updateOrder: updateOrder
 };
