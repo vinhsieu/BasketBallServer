@@ -34,11 +34,12 @@ router.get('/backSucccess', async function (req, res) {
 	const checkOutDate = checkOut.update_at;
 	if (status === 'c') {
 		var result = await (query.updateProduct(orderID, magiaodich, checkOutId, true, checkOutDate));
-		res.send("<script>window.open('http://localhost/M-Dev-Store/customer/my_account.php?my_orders', '_self');</script>");
+		res.send("<script>window.open('http://192.168.0.135/M-Dev-Store/customer/my_account.php?my_orders', '_self');</script>");
 	}
 	else {
 		query.updateProduct(orderID, magiaodich, checkOutId, false, checkOutDate);
-		res.send('<p>Đã Hủy Thành Công, Bạn Có Thể Thanh Toán Lại</p>');
+		// res.send('<p>Đã Hủy Thành Công, Bạn Có Thể Thanh Toán Lại</p>');
+		res.send("<script>window.open('http://192.168.0.135/M-Dev-Store/customer/my_account.php?my_orders', '_self');</script>"); 
 	}
 });
 
@@ -217,12 +218,23 @@ router.get('/ward/:districtID', async function (req, res) {
 
 		res1.on("end", function (chunk) {
 			var body = Buffer.concat(chunks);
-			var json = JSON.parse(body)['data']['Wards'];
-			json = json.map(e => {
-				return { WardCode: e.WardCode, WardName: e.WardName };
-			});
-
-			res.send(json);
+			var json = JSON.parse(body)['data'];
+			if(json !== null){
+				json = json['Wards'];
+				if(json !== null){
+					json = json.map(e => {
+						return { WardCode: e.WardCode, WardName: e.WardName };
+					});
+		
+					res.send(json);
+				}
+				else{
+					res.send("CO_LOI");
+				}
+			}
+			else{
+				res.send("PHUONG_KHONG_TON_TAI");
+			}
 		});
 
 		res1.on("error", function (error) {
@@ -273,11 +285,12 @@ router.get('/shipFee/:districtID/:weight', async function (req, res) {
 	});
 
 	var postData = JSON.stringify({
-		"token":"TokenStaging",
-		"Weight":parseInt(weight),
-		"FromDistrictID":1463,
+		"token": "TokenStaging",
+		"Weight": parseInt(weight),
+		"FromDistrictID": 1463,
 		"ToDistrictID": parseInt(districtID),
-		"ServiceID":53320});
+		"ServiceID": 53320
+	});
 
 	req1.write(postData);
 
@@ -315,11 +328,6 @@ router.get('/imageByID/:imageID', async function (req, res) {//Lay hinh anh bang
 	url = JSON.parse(url)[0]['link'];
 	const result = "E:\\xampp\\htdocs\\M-Dev-Store\\admin_area\\product_images\\" + url.toString();
 	res.sendFile(result);
-});
-
-router.get('/search/:key', async function (req, res) {
-	var result = JSON.stringify(await query.search(req.params.key));
-	res.send(result);
 });
 
 router.get('/search/:key', async function (req, res) {
@@ -371,6 +379,85 @@ router.post('/register', async function (req, res) {
 	else {
 		res.send('KHONG THANH CONG');
 	}
+});
+
+router.post('/getGHN', async function (req, res) {
+	const billID = req.body.billID;
+	const isCod = req.body.isCod;
+	const user = JSON.parse(JSON.stringify(await query.getUserInfoByBillId(billID)))[0];
+
+	var options = {
+		'method': 'POST',
+		'hostname': 'dev-online-gateway.ghn.vn',
+		'path': '/apiv3-api/api/v1/apiv3/CreateOrder?',
+		'headers': {
+			'Content-Type': 'application/json'
+		},
+		'maxRedirects': 20
+	};
+
+	var req1 = https.request(options, function (res1) {
+		var chunks = [];
+
+		res1.on("data", function (chunk) {
+			chunks.push(chunk);
+		});
+
+		res1.on("end",async function (chunk) {
+			var body = Buffer.concat(chunks);
+			var result = JSON.parse(body);
+			if (result.msg === 'Success') {
+				result = result['data'];
+
+				var result2 = await query.updateBill(billID, result['OrderID'], result['OrderCode'], result['ExpectedDeliveryTime'], result['TotalServiceFee']);
+				if (result2 === 'THANH_CONG') {
+					res.send(result['OrderCode']);
+				}
+				else{
+					res.send('THAT_BAI');
+				}
+			}
+			else {
+				res.send('THAT_BAI');
+			}
+		});
+
+		res1.on("error", function (error) {
+			console.error(error);
+		});
+	});
+
+	var postData = JSON.stringify({
+		"token": "TokenStaging",
+		"PaymentTypeID": 2,
+		"FromDistrictID": 1463,
+		"FromWardCode": "21808",
+		"ToDistrictID": user.districtID,//District ID cua Khach
+		"ToWardCode": user.wardID.toString(),// Ward ID cua khach
+		"ClientContactName": "Dang Vinh Sieu",
+		"ClientContactPhone": "0906568946",
+		"ClientAddress": "Ktx Khu A",
+		"CustomerName": user.name,//Ten Khach Hang
+		"CustomerPhone": user.phone,//SDT 
+		"ShippingAddress": user.address,//Dia Chi
+		"CoDAmount": 0,//COD
+		"NoteCode": "CHOXEMHANGKHONGTHU",
+		"ServiceID": 53321,
+		"Weight": 1020,// Khoi Luonh
+		"Length": 10,
+		"Width": 10,
+		"Height": 10,
+		"ReturnContactName": "Dang Vinh Sieu",
+		"ReturnContactPhone": "0906568946",
+		"ReturnAddress": "Ktx Khu A",
+		"ReturnDistrictID": 1463,
+		"ExternalReturnCode": "GHN",
+		"AffiliateID": 252905
+	});
+
+	req1.write(postData);
+
+	req1.end();
 });
 
 const TokenCheckMiddleware = async (req, res, next) => {
@@ -441,8 +528,8 @@ router.post('/cartOnline', async function (req, res) {
 			"mrc_order_id": ramdonPre + '.' + orderinfo['orderID'],
 			"total_amount": orderinfo['TongTien'],
 			"description": 'Thanh Toan Don Hang:' + orderinfo['orderID'],
-			"url_success": "http://localhost:3000/api/backSucccess",
-			"url_detail": "http://localhost:3000/api/backSucccess"
+			"url_success": "http://192.168.0.135:3000/api/backSucccess",
+			"url_detail": "http://192.168.0.135:3000/api/backSucccess"
 		}
 	};
 	const token = jwt.sign(data, API_SECRET, { algorithm: ENCODE_ALG });
@@ -479,8 +566,8 @@ router.post('/cartOnline', async function (req, res) {
 		"mrc_order_id": ramdonPre + '.' + orderinfo['orderID'],
 		"total_amount": orderinfo['TongTien'],
 		"description": 'Thanh Toan Don Hang:' + orderinfo['orderID'],
-		"url_success": "http://localhost:3000/api/backSucccess",
-		"url_detail": "http://localhost:3000/api/backSucccess"
+		"url_success": "http://192.168.0.135:3000/api/backSucccess",
+		"url_detail": "http://192.168.0.135:3000/api/backSucccess"
 	});
 	req.write(postData);
 	req.end();

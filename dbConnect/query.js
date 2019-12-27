@@ -318,6 +318,25 @@ const deleteCartDetail = function (idCustomer){
 	});
 }
 
+const getUserInfoByBillId = function (billId){
+	return new Promise(function (resolve, reject) {
+		var query = "SELECT urs.* FROM bill b JOIN users urs ON b.id_customer=urs.id WHERE b.id ="+billId+"";
+		pool.query(query, function (err, rows) {
+			if (err) console.log(err);
+			resolve(rows);
+		});
+	});
+}
+const updateBill = function(billID,orderID, orderCode, expectedDeliveryTime, totalServiceFee){
+	return new Promise(function (resolve, reject) {
+		var query = "UPDATE bill SET orderID = '"+orderID+"', orderCode='"+orderCode+"', expectedDeliveryTime='"+expectedDeliveryTime+"', totalServiceFee='"+totalServiceFee+"', status='3' WHERE id ='"+billID+"'";
+		pool.query(query, function (err, rows) {
+			if (err) console.log(err);
+			resolve("THANH_CONG");
+		});
+	});
+}
+
 module.exports = {
 	findCusIdByEmail: findCusIdByEmail,
 	getType: getType,
@@ -336,5 +355,7 @@ module.exports = {
 	getCartDetail: getCartDetail,
 	updateProduct: updateProduct,
 	updateURL: updateURL,
-	deleteCartDetail: deleteCartDetail
+	deleteCartDetail: deleteCartDetail,
+	getUserInfoByBillId: getUserInfoByBillId,
+	updateBill: updateBill
 };
