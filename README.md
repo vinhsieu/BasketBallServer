@@ -1,4 +1,4 @@
-# Node.js and Angular.js Ecommerce Application
+# Node.js
 
 This is a simple example e-commerce application is developed using Angular.js as frontend and Node.js as backend.
 
