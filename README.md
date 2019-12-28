@@ -1,8 +1,6 @@
 # Node.js
 
-This is a simple example e-commerce application is developed using Angular.js as frontend and Node.js as backend.
-
-Currently developing backend of the application, once it completes i will create frontend store.
+This is a simple Node.js as backend.
 
 ## Installation
 
@@ -25,10 +23,6 @@ Now you can run it using the node command
 ```
 > node app
 ```
-
-## Databases Implementaion
-I have made two beanches one for mysql and one for mongo db, i will be continuously updating these two branches and create a backend and frontend for a basic ecommerce application in node.js and angular.js
-
 ## License
 
 * [MIT License](https://opensource.org/licenses/MIT)
