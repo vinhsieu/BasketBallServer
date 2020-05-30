@@ -10,6 +10,8 @@ var https = require('https');
 
 var ghn = [];
 
+const localIP= "http://192.168.2.26";
+const redirectURL = localIP + "/DA1/public/user/orders"
 function makeid(length) {
 	var result = '';
 	var characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -34,17 +36,38 @@ router.get('/backSucccess', async function (req, res) {
 	const checkOutDate = checkOut.update_at;
 	if (status === 'c') {
 		var result = await (query.updateProduct(orderID, magiaodich, checkOutId, true, checkOutDate));
-		res.send("<script>window.open('http://192.168.0.135/M-Dev-Store/customer/my_account.php?my_orders', '_self');</script>");
+		//res.send('<p>Đã Thanh Toán Thành Công</p>');
+		res.send("<script>window.open('"+ redirectURL+"', '_self');</script>");
 	}
 	else {
 		query.updateProduct(orderID, magiaodich, checkOutId, false, checkOutDate);
-		// res.send('<p>Đã Hủy Thành Công, Bạn Có Thể Thanh Toán Lại</p>');
-		res.send("<script>window.open('http://192.168.0.135/M-Dev-Store/customer/my_account.php?my_orders', '_self');</script>"); 
+		//res.send('<p>Đã Hủy Thành Công, Bạn Có Thể Thanh Toán Lại</p>');
+		res.send("<script>window.open('"+ redirectURL+"', '_self');</script>");
+	}
+});
+
+router.get('/backSucccessMoMo', async function (req, res) {
+	const checkOut = req.query;
+	const checkOutId = checkOut.transId;
+	const orderID = checkOut.orderId.toString().split('.')[1];
+	const magiaodich = checkOut.requestId;
+	const status = checkOut.errorCode;
+	const checkOutDate = checkOut.responseTime;
+	console.log(checkOut);
+	if (status == 99 || status == 0) {
+
+		var result = await (query.updateProduct(orderID, magiaodich, checkOutId, true, checkOutDate));
+		//res.send('<p>Đã Thanh Toán Thành Công</p>');
+		res.send("<script>window.open('"+ redirectURL+"', '_self');</script>");
+	}
+	else {
+		query.updateProduct(orderID, magiaodich, checkOutId, false, checkOutDate);
+		//res.send('<p>Đã Hủy Thành Công, Bạn Có Thể Thanh Toán Lại</p>');
+		res.send("<script>window.open('"+ redirectURL+"', '_self');</script>");
 	}
 });
 
 router.get('/ghn', async function (req, res) {
-	//Request len Bao Kim
 	var options = {
 		'method': 'POST',
 		'hostname': 'dev-online-gateway.ghn.vn',
@@ -219,20 +242,20 @@ router.get('/ward/:districtID', async function (req, res) {
 		res1.on("end", function (chunk) {
 			var body = Buffer.concat(chunks);
 			var json = JSON.parse(body)['data'];
-			if(json !== null){
+			if (json !== null) {
 				json = json['Wards'];
-				if(json !== null){
+				if (json !== null) {
 					json = json.map(e => {
 						return { WardCode: e.WardCode, WardName: e.WardName };
 					});
-		
+
 					res.send(json);
 				}
-				else{
+				else {
 					res.send("CO_LOI");
 				}
 			}
-			else{
+			else {
 				res.send("PHUONG_KHONG_TON_TAI");
 			}
 		});
@@ -414,7 +437,7 @@ router.post('/getGHN', async function (req, res) {
 			chunks.push(chunk);
 		});
 
-		res1.on("end",async function (chunk) {
+		res1.on("end", async function (chunk) {
 			var body = Buffer.concat(chunks);
 			var result = JSON.parse(body);
 			if (result.msg === 'Success') {
@@ -424,7 +447,7 @@ router.post('/getGHN', async function (req, res) {
 				if (result2 === 'THANH_CONG') {
 					res.send(result['OrderCode']);
 				}
-				else{
+				else {
 					res.send('THAT_BAI');
 				}
 			}
@@ -549,8 +572,8 @@ router.post('/cartOnline', async function (req, res) {
 			"mrc_order_id": ramdonPre + '.' + orderinfo['orderID'],
 			"total_amount": orderinfo['TongTien'],
 			"description": 'Thanh Toan Don Hang:' + orderinfo['orderID'],
-			"url_success": "http://192.168.0.135:3000/api/backSucccess",
-			"url_detail": "http://192.168.0.135:3000/api/backSucccess"
+			"url_success": localIP + ":3000/api/backSucccess",
+			"url_detail": localIP + ":3000/api/backSucccess"
 		}
 	};
 	const token = jwt.sign(data, API_SECRET, { algorithm: ENCODE_ALG });
@@ -587,13 +610,92 @@ router.post('/cartOnline', async function (req, res) {
 		"mrc_order_id": ramdonPre + '.' + orderinfo['orderID'],
 		"total_amount": orderinfo['TongTien'],
 		"description": 'Thanh Toan Don Hang:' + orderinfo['orderID'],
-		"url_success": "http://192.168.0.135:3000/api/backSucccess",
-		"url_detail": "http://192.168.0.135:3000/api/backSucccess"
+		"url_success": localIP + ":3000/api/backSucccess",
+		"url_detail": localIP + ":3000/api/backSucccess"
 	});
 	req.write(postData);
 	req.end();
 });
 
+router.post('/momo', async function (req, res) {
+	//Xu Ly Don Hang
+	const cusId = await query.findCusIdByEmail(req.decoded.email);
+	const orderinfo = await query.Cart(cusId, req.body.arrayDetail);
+
+	const ramdonPre = makeid(5);
+	// Tạo MoMo Thanh Toán
+	const secretKey = '5FF7hezTAuGBceYv5i4bpgbijMsmt5da';
+
+	const partnerCode = 'MOMOHKXI20191229';
+	const accessKey = 'MQtK7JvLIsvGiZlH';
+	const requireID = 'momo'; //id don hang cua minh
+	const amount = orderinfo['TongTien'].toString();
+	const orderID = ramdonPre + '.' + orderinfo['orderID'];
+	const orderInfo = 'Thanh Toan';
+	const returnUrl = localIP + ":3000/api/backSucccessMoMo";
+	const notifyUrl = localIP + ":3000/api/backSucccessMoMo";
+	const extraData = "email=dangvinhsieu.a10@gmail.com";
+
+	const crypto = require('crypto');
+
+	const data = 'partnerCode=' + partnerCode + '&accessKey=' + accessKey + '&requestId=' + requireID + '&amount=' + amount + '&orderId=' + orderID + '&orderInfo=' + orderInfo +
+		'&returnUrl=' + returnUrl + '&notifyUrl=' + notifyUrl + '&extraData=' + extraData;
+
+	let token = crypto.createHmac('sha256', secretKey).update(data).digest("hex");
+
+	//Request Len MoMo
+	var options = {
+		'method': 'POST',
+		'hostname': 'test-payment.momo.vn',
+		'path': '/gw_payment/transactionProcessor',
+		'headers': {
+		  'Content-Type': 'application/json'
+		},
+		'maxRedirects': 20
+	  };
+	  
+	  var req1 = https.request(options, function (res1) {
+		var chunks = [];
+	  
+		res1.on("data", function (chunk) {
+		  chunks.push(chunk);
+		});
+	  
+		res1.on("end", async function (chunk) {
+		  var body = Buffer.concat(chunks);
+		  const errorCode = JSON.parse(body)['errorCode'];
+		  if(errorCode === 0){
+			const temp = await query.deleteCartDetail(cusId);
+			res.send(JSON.parse(body)['payUrl'].toString());
+		  }
+		  else{
+			  res.send("CO_LOI");
+		  }
+		});
+	  
+		res1.on("error", function (error) {
+		  console.error(error);
+		});
+	  });
+	  
+	  var postData = JSON.stringify({
+		  "accessKey":"MQtK7JvLIsvGiZlH",
+		  "partnerCode":"MOMOHKXI20191229",
+		  "requestType":"captureMoMoWallet",
+		  "notifyUrl":localIP + ":3000/api/backSucccessMoMo",
+		  "returnUrl":localIP + ":3000/api/backSucccessMoMo",
+		  "orderId": ramdonPre + '.' + orderinfo['orderID'],
+		  "amount":orderinfo['TongTien'].toString(),
+		  "orderInfo":"Thanh Toan",
+		  "requestId":"momo",
+		  "extraData":"email=dangvinhsieu.a10@gmail.com",
+		  "signature":token});
+	  
+	  req1.write(postData);
+	  
+	  req1.end();
+
+});
 
 router.post('/orderHistory', async (req, res) => {
 	var result = JSON.stringify(await query.orderHistory(req.decoded.email));
